@@ -70,6 +70,36 @@ def stat():
     stats = list(np.ravel(stats))
     return jsonify(stats)
 
+@app.route('/api/v1.0/tobs')
+def tobs():
+    session = Session(engine)
+    
+    most_recent_date = session.query(Measure.date).order_by(Measure.date.desc()).first()
+
+    most_recent_date = dt.date(2017, 8, 23)
+
+    year_ago = most_recent_date - dt.timedelta(days = 365)
+
+    station_obs_count = session.query(Measure.station, func.count(Measure.station)).\
+                    group_by(Measure.station).\
+                    order_by(func.count(Measure.station).desc())
+
+    most_active = station_obs_count[0][0]
+    temp_dates_ma = session.query(Measure.date, Measure.tobs).filter(Measure.date >= year_ago, Measure.station == "USC00519281").all()
+    session.close()
+    temp_dates_ma = list(np.ravel(temp_dates_ma))
+    return jsonify(temp_dates_ma)
+
+@app.route('/api/v1.0/<start>')
+def start():
+    session = Session(engine)
+    
+    all_dates = session.query(Measure.date).order_by(Measure.date.desc()).all()
+    start = all_dates[25]
+    start = dt.date(2017, 8, 17)
+    
+    temps = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).filter(Measure.date >= start).all()
+    
 
 if __name__ == "__main__":
     app.run(debug=True)

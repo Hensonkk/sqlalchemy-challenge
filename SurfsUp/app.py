@@ -36,10 +36,12 @@ app = Flask(__name__)
 #################################################
 # Flask Routes
 #################################################
+
+# created a route to display my initial homepage
 @app.route('/')
 def home():
     
-    # there is some code here usually 
+    #Setup initial page on website
     
     return (f"welcome to my page <br/>"
             f"<br/>"
@@ -51,6 +53,7 @@ def home():
             f"/api/v1.0/<start>/<end>"
             )
     
+# created a route to display precipitation data for whole year from most recent date
 @app.route('/api/v1.0/precipitation')
 def prcp():
     most_recent_date = dt.date(2017, 8, 23)
@@ -63,6 +66,8 @@ def prcp():
         prcp_dict[date] = precip   
     return jsonify(prcp_dict)
 
+
+# created a route to display a list of all the stations
 @app.route('/api/v1.0/stations')
 def stat():
     stats = session.query(Station.station).all()
@@ -70,6 +75,8 @@ def stat():
     stats = list(np.ravel(stats))
     return jsonify(stats)
 
+
+# created a route to display the temperatures over the course of a year for the most active station
 @app.route('/api/v1.0/tobs')
 def tobs():
     session = Session(engine)
@@ -90,16 +97,23 @@ def tobs():
     temp_dates_ma = list(np.ravel(temp_dates_ma))
     return jsonify(temp_dates_ma)
 
+# created a route and function that allows the user to input a start and end date to access the minimum temp, max temp, and avg temp for user inputs
 @app.route('/api/v1.0/<start>')
-def start():
-    session = Session(engine)
-    
-    all_dates = session.query(Measure.date).order_by(Measure.date.desc()).all()
-    start = all_dates[25]
-    start = dt.date(2017, 8, 17)
-    
-    temps = session.query(func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)).filter(Measure.date >= start).all()
-    
+@app.route('/api/v1.0/<start>/<end>')
+def stats(start=None, end=None):
+    sel = [func.min(Measure.tobs), func.max(Measure.tobs), func.avg(Measure.tobs)]
+
+    if not end:
+        results = session.query(*sel).\
+            filter(Measure.date >= start).all()
+        temps = list(np.ravel(results))
+        return jsonify(temps)
+
+    results = session.query(*sel).\
+        filter(Measure.date >= start).\
+        filter(Measure.date <= end).all()
+    temps = list(np.ravel(results))
+    return jsonify(temps)
 
 if __name__ == "__main__":
     app.run(debug=True)
